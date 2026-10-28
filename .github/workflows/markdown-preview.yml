@@ -1,0 +1,75 @@
+name: Markdown preview add-on
+
+# The preview DLL is an optional add-on, so it is built outside Notepad3.sln:
+# the solution also targets ARM (32-bit), for which the WebView2 SDK has no
+# libraries. This workflow is opt-in for source changes under the add-on.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'src/MarkdownPreview/**'
+      - 'src/MarkdownPreview.c'
+      - 'src/MarkdownPreview.h'
+      - 'test/MarkdownPreview/**'
+      - 'Build/scripts/PackageMarkdownPreview.ps1'
+      - '.github/workflows/markdown-preview.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: ${{ matrix.platform }} add-on build
+    runs-on: windows-2025-vs2026
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [Win32, x64, ARM64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v4
+
+      - name: Restore WebView2 SDK
+        run: nuget restore src\MarkdownPreview\packages.config -PackagesDirectory packages
+
+      - name: Build preview DLL
+        run: msbuild src\MarkdownPreview\MarkdownPreview.vcxproj /m /p:Configuration=Release /p:Platform=${{ matrix.platform }} /nologo /v:minimal
+
+  test:
+    name: Markdown preview suites
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v4
+
+      - name: Restore WebView2 SDK
+        run: nuget restore src\MarkdownPreview\packages.config -PackagesDirectory packages
+
+      - name: Core suite (parser, mappings, resources)
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite Core
+
+      # Requires the Evergreen WebView2 runtime. The suite reports a
+      # prerequisite failure rather than passing when the runtime is missing.
+      - name: WebView suite (DLL lifecycle, browser DOM)
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite WebView
+
+      - name: Package add-on
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File Build\scripts\PackageMarkdownPreview.ps1 -Platform x64 -Configuration Release -OutputDirectory out
+          powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite Package -PackagePath out\MarkdownPreview-Release-x64.zip -Platform x64
