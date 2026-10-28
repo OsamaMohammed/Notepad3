@@ -15,6 +15,12 @@ Each language has an `EDITLEXER` definition in `src\StyleLexers\styleLexXXX.c`. 
 
 Homebrew lexer sources under `lexilla\lexers_x\` include AutoHotkey (`LexAHK` and `LexAHK2`), CSV, JSON5, Kotlin, and Verilog. Their `SCE_*_*` enums are in `lexilla\lexers_x\SciXLexer.h`, not `lexilla\include\SciLexer.h`. `LexHTML.cxx` is under `lexilla\lexers\` in this repository; `SCLEX_HTML` and `SCLEX_XML` use that source.
 
+## Markdown preview integration touchpoints
+
+- `src\StyleLexers\styleLexMarkdown.c` defines source highlighting in `lexMARKDOWN` and recognizes `md; markdown; mdown; mkdn; mkd; mdx; qmd`. Lexer recognition alone does not provide a rendered document view.
+- `src\Notepad3.c` creates the Scintilla source editor in `Globals.hwndEdit`; `MsgSize()` lays out `g_hwndEditWindow` within the editor frame. Inspect both handles when adding an alternate view.
+- Toolbar actions route through `s_ToolbarDispatch[]` and `_HandleToolbarCommands()`; `_UpdateToolbarDelayed()` updates button state. A preview command must also account for editor commands that continue to target `Globals.hwndEdit` while another view is visible.
+
 ## Fixtures and verification
 
 `test\test_files\StyleLexers\styleLex<NAME>\` contains lexer fixtures. Any tokenization change (style, state-machine branch, keyword list, escape handling, fold rule, etc.) must extend or add a fixture. Open fixtures in Notepad3 for visual verification; automated lexer assertions are not in scope. Folder names follow the EDITLEXER source file; the historical AHK folder is `styleLexAHKL\`.
