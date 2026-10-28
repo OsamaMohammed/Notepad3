@@ -30,6 +30,7 @@ Thumbs.db
 
 /.vs
 /Bin
+/obj/
 #/Build/Ignore*
 #/Build/*portable*
 /Build/notepad3*setup*

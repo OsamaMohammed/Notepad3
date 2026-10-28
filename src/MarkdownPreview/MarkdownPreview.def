@@ -1,0 +1,3 @@
+LIBRARY MarkdownPreview
+EXPORTS
+    NP3Preview_GetApi

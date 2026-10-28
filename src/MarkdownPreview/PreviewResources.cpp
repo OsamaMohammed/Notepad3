@@ -1,5 +1,7 @@
 #include "PreviewResources.h"
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <winhttp.h>
 #include <shlwapi.h>
