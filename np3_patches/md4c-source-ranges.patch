@@ -1,0 +1,124 @@
+--- a/src/md4c.h
++++ b/src/md4c.h
+@@ -468,6 +468,11 @@
+     /* Reserved. Set to NULL.
+      */
+     void (*syntax)(void);
++
++    /* NP3 extension: exact source ranges for rendered text and leaf blocks.
++     * Private to the bundled parser; not ABI-compatible with upstream MD4C. */
++    void (*source_range)(MD_OFFSET begin, MD_OFFSET end, void* userdata);
++    void (*source_block)(MD_OFFSET begin, void* userdata);
+ } MD_PARSER;
+ 
+ 
+--- a/src/md4c.c
++++ b/src/md4c.c
+@@ -175,6 +175,8 @@
+     const CHAR* text;
+     SZ size;
+     MD_PARSER parser;
++    OFF source_begin;
++    OFF source_end;
+     void* userdata;
+ 
+     /* When this is true, it allows some optimizations. */
+@@ -396,6 +398,24 @@
+     return memcmp(s1, s2, n * sizeof(CHAR)) == 0;
+ }
+ 
++/* NP3: report input ranges even when MD4C synthesizes whitespace or NUL
++ * replacements. Integer address checks avoid comparing unrelated pointers. */
++static int
++md_source_text(MD_CTX* ctx, MD_TEXTTYPE type, const CHAR* text, SZ size, void* userdata)
++{
++    OFF begin = ctx->source_begin;
++    OFF end = ctx->source_end;
++    size_t p = (size_t) text;
++    size_t base = (size_t) ctx->text;
++    if(p >= base && p - base <= ctx->size && size <= ctx->size - (p - base)) {
++        begin = (OFF)(p - base);
++        end = begin + size;
++    }
++    if(ctx->parser.source_range != NULL)
++        ctx->parser.source_range(begin, end, userdata);
++    return ctx->parser.text(type, text, size, userdata);
++}
++
+ static int
+ md_text_with_null_replacement(MD_CTX* ctx, MD_TEXTTYPE type, const CHAR* str, SZ size)
+ {
+@@ -407,7 +427,7 @@
+             off++;
+ 
+         if(off > 0) {
+-            ret = ctx->parser.text(type, str, off, ctx->userdata);
++            ret = md_source_text(ctx, type, str, off, ctx->userdata);
+             if(ret != 0)
+                 return ret;
+ 
+@@ -419,7 +439,7 @@
+         if(off >= size)
+             return 0;
+ 
+-        ret = ctx->parser.text(MD_TEXT_NULLCHAR, _T(""), 1, ctx->userdata);
++        ret = md_source_text(ctx, MD_TEXT_NULLCHAR, str, 1, ctx->userdata);
+         if(ret != 0)
+             return ret;
+         off++;
+@@ -493,7 +513,7 @@
+ #define MD_TEXT(type, str, size)                                            \
+     do {                                                                    \
+         if(size > 0) {                                                      \
+-            ret = ctx->parser.text((type), (str), (size), ctx->userdata);   \
++            ret = md_source_text(ctx, (type), (str), (size), ctx->userdata);   \
+             if(ret != 0) {                                                  \
+                 MD_LOG("Aborted from text() callback.");                    \
+                 goto abort;                                                 \
+@@ -4887,6 +4907,8 @@
+ 
+         /* If reached the mark, process it and move to next one. */
+         if(off >= mark->beg) {
++            ctx->source_begin = mark->beg;
++            ctx->source_end = mark->end;
+             switch(mark->ch) {
+                 case '\\':      /* Backslash escape. */
+                     if(ISNEWLINE(mark->beg+1))
+@@ -5144,6 +5166,8 @@
+ 
+         /* If reached end of line, move to next one. */
+         if(off >= line->end) {
++            ctx->source_begin = off;
++            ctx->source_end = (off < ctx->size ? off + 1 : off);
+             /* If it is the last line, we are done. */
+             if(off >= end)
+                 break;
+@@ -5437,6 +5461,8 @@
+     for(line_index = 0; line_index < n_lines; line_index++) {
+         const MD_VERBATIMLINE* line = &lines[line_index];
+         int indent = line->indent;
++        ctx->source_begin = line->beg;
++        ctx->source_end = line->beg;
+ 
+         MD_ASSERT(indent >= 0);
+ 
+@@ -5451,6 +5477,8 @@
+         /* Output the code line itself. */
+         MD_TEXT_INSECURE(text_type, STR(line->beg), line->end - line->beg);
+ 
++        ctx->source_begin = line->end;
++        ctx->source_end = (line->end < ctx->size ? line->end + 1 : line->end);
+         /* Enforce end-of-line. */
+         MD_TEXT(text_type, _T("\n"), 1);
+     }
+@@ -5535,6 +5563,10 @@
+     int is_in_tight_list;
+     int clean_fence_code_detail = false;
+     int ret = 0;
++
++    /* NP3: both MD_LINE and MD_VERBATIMLINE begin with the input offset. */
++    if(ctx->parser.source_block != NULL && block->n_lines > 0)
++        ctx->parser.source_block(((const MD_LINE*)(block + 1))->beg, ctx->userdata);
+ 
+     /* For large tables check the table density: If it's too low, lets suppress
+      * its interpretation as a table, as a safety measure against quadratic

@@ -13,6 +13,8 @@
 
 `msbuild` is not on the PowerShell PATH. Locate it with `vswhere.exe`:
 
+Before building, confirm `vswhere -all -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath` returns an installation. The presence of `vswhere.exe` alone does not establish that C++ tools are installed. `Build/scripts/Build.ps1` currently passes a missing discovery result to `Join-Path`, producing a null `Path` argument error before compilation; resolve the toolchain prerequisite rather than treating that as a source regression.
+
 ```powershell
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
     -latest -requires Microsoft.Component.MSBuild `
