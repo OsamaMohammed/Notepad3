@@ -32,7 +32,11 @@ $commands = @(
     "call `"$vcvars`" >nul",
     'if errorlevel 1 exit /b 1',
     "cd /d `"$output`"",
-    "cl /nologo /EHsc /std:c++17 /utf-8 /W4 /I`"$source`" `"$test`" `"$source\MarkdownDocument.cpp`" `"$source\vendor\md4c\md4c.c`" `"$source\vendor\md4c\entity.c`" /Fe:TestMarkdownDocument.exe",
+    "cl /nologo /W0 /c `"$source\vendor\md4c\md4c.c`" `"$source\vendor\md4c\entity.c`"",
+    'if errorlevel 1 exit /b 1',
+    "cl /nologo /EHsc /std:c++17 /utf-8 /W4 /I`"$source`" `"$test`" `"$source\MarkdownDocument.cpp`" md4c.obj entity.obj /Fe:TestMarkdownDocument.exe",
+    'if errorlevel 1 exit /b 1',
+    "cl /nologo /EHsc /std:c++17 /utf-8 /W4 /DUNICODE /D_UNICODE /I`"$source`" `"$PSScriptRoot\TestPreviewResources.cpp`" `"$source\PreviewResources.cpp`" /Fe:TestPreviewResources.exe /link shlwapi.lib winhttp.lib",
     'exit /b %errorlevel%'
 )
 [IO.File]::WriteAllLines($batch, $commands, [Text.UTF8Encoding]::new($false))
@@ -40,3 +44,5 @@ $commands = @(
 if ($LASTEXITCODE -ne 0) { throw 'Core test build failed; no test results are available.' }
 & (Join-Path $output 'TestMarkdownDocument.exe')
 if ($LASTEXITCODE -ne 0) { throw 'Markdown source-mapping tests failed.' }
+& (Join-Path $output 'TestPreviewResources.exe') (Join-Path $output 'resource-fixtures')
+if ($LASTEXITCODE -ne 0) { throw 'Preview resource tests failed.' }
