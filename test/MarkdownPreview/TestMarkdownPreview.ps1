@@ -1,6 +1,8 @@
 param(
-    [ValidateSet('Core','WebView','Host')][string]$Suite = 'Core',
-    [string]$VisualStudioPath
+    [ValidateSet('Core','WebView','Host','Package')][string]$Suite = 'Core',
+    [string]$VisualStudioPath,
+    [string]$PackagePath,
+    [ValidateSet('Win32','x64','ARM64')][string]$Platform = 'x64'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +23,62 @@ if (!(Test-Path -LiteralPath $vcvars)) {
 $output = Join-Path $root '.superpowers\sdd\2026-10-28-markdown-preview\core-tests'
 [void](New-Item -ItemType Directory -Path $output -Force)
 $source = Join-Path $root 'src\MarkdownPreview'
+if ($Suite -eq 'Package') {
+    if (!$PackagePath -or !(Test-Path -LiteralPath $PackagePath)) { throw 'Package suite requires -PackagePath <zip>.' }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $PackagePath).Path)
+    try {
+        $names = @($zip.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
+        $checks = 0
+        function Assert-Package([bool]$condition, [string]$message) {
+            if (!$condition) { throw "Package assertion failed: $message" }
+            $script:checks++
+        }
+        Assert-Package ($names -contains 'MarkdownPreview.dll') 'DLL at package root'
+        Assert-Package ($names -contains 'MarkdownPreview/index.html') 'preview document'
+        Assert-Package ($names -contains 'MarkdownPreview/preview.js') 'preview script'
+        Assert-Package ($names -contains 'MarkdownPreview/preview.css') 'preview stylesheet'
+        Assert-Package ($names -contains 'THIRD-PARTY-NOTICES.txt') 'license notices'
+        Assert-Package (($names | Where-Object { $_ -like 'MarkdownPreview/vendor/mermaid/*' }).Count -gt 0) 'bundled Mermaid assets'
+        Assert-Package (($names | Where-Object { $_ -like 'MarkdownPreview/vendor/mermaid/chunks/*' }).Count -gt 0) 'bundled Mermaid chunks'
+        Assert-Package (($names | Where-Object { $_ -like 'MarkdownPreview/vendor/mermaid/LICENSE' }).Count -eq 1) 'Mermaid license'
+        Assert-Package (($names | Where-Object { $_ -match '(WebView2Loader|EmbeddedBrowserWebView|msedgewebview2)\.' }).Count -eq 0) 'no bundled browser runtime'
+        Assert-Package (($names | Where-Object { $_ -match '\.(pdb|ilk|exp|obj)$' }).Count -eq 0) 'no build leftovers'
+
+        $dllEntry = $zip.Entries | Where-Object { ($_.FullName -replace '\\', '/') -eq 'MarkdownPreview.dll' }
+        $memory = [IO.MemoryStream]::new()
+        $stream = $dllEntry.Open()
+        try {
+            $stream.CopyTo($memory)
+        }
+        finally {
+            $stream.Dispose()
+        }
+        $memory.Position = 0
+        $reader = [IO.BinaryReader]::new($memory)
+        [void]$reader.ReadUInt16()
+        $memory.Position = 0x3c
+        $peOffset = $reader.ReadInt32()
+        $memory.Position = $peOffset + 4
+        $machine = $reader.ReadUInt16()
+        $memory.Dispose()
+        $expected = @{ Win32 = 0x014c; x64 = 0x8664; ARM64 = 0xaa64 }[$Platform]
+        Assert-Package ($machine -eq $expected) "DLL architecture matches $Platform"
+
+        $noticesEntry = $zip.Entries | Where-Object { ($_.FullName -replace '\\', '/') -eq 'THIRD-PARTY-NOTICES.txt' }
+        $noticesReader = [IO.StreamReader]::new($noticesEntry.Open())
+        try { $noticesText = $noticesReader.ReadToEnd() } finally { $noticesReader.Dispose() }
+        Assert-Package ($noticesText -match 'MD4C') 'MD4C notice'
+        Assert-Package ($noticesText -match 'Mermaid') 'Mermaid notice'
+        Assert-Package ($noticesText -match 'WebView2') 'WebView2 notice'
+
+        "PASS: $checks package assertions"
+    }
+    finally {
+        $zip.Dispose()
+    }
+    exit 0
+}
 if ($Suite -eq 'Host') {
     $msbuild = Join-Path $VisualStudioPath 'MSBuild\Current\Bin\MSBuild.exe'
     & $msbuild (Join-Path $source 'MarkdownPreview.vcxproj') -m -p:Configuration=Release -p:Platform=x64 -nologo -v:minimal
