@@ -81,3 +81,6 @@ _upgrade_staging/
 
 # ARM64 build intermediate directories
 **/ARM64/
+
+# Isolated feature worktrees
+/.worktrees/
