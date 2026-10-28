@@ -1,6 +1,6 @@
 # Markdown preview DLL
 
-Status: proposed; awaiting user approval.
+Status: approved by the user on 2026-10-28; implementation planning in progress.
 
 ## Intent and agreed requirements
 
@@ -50,7 +50,7 @@ Map positions during parsing and HTML generation, not by searching for clicked w
 
 Emit identifiers for rendered text runs with mappings from DOM UTF-16 character offsets to original UTF-8 source byte offsets. Account for escapes, entities, normalized whitespace, and removed formatting delimiters. Obtain the DOM text position at the double-click location and resolve it through this mapping. Generated text falls back to its owning source block.
 
-Convert UTF-8 snapshot offsets to the current Scintilla document byte positions when the document's internal code page differs. Validate all incoming offsets against the snapshot and generation. Never navigate using stale mappings. Use existing `SciCall.h` wrappers for caret placement, unfolding, and visibility.
+`src/Encoding.h` defines `Encoding_SciCP` as `CP_UTF8`; snapshot byte offsets therefore correspond directly to Scintilla positions, regardless of the file's disk encoding. Validate all incoming offsets against the snapshot and generation. Never navigate using stale mappings. Use existing `SciCall.h` wrappers for caret placement, unfolding, and visibility.
 
 Parser choice is left to the builder, subject to source-range fidelity, tables/task-list support, compatible licensing, offline packaging, and focused mapping tests. Preserve line-ending and Unicode offset correctness through conversion.
 
@@ -89,7 +89,7 @@ Measure ordinary editor startup before and after the change using the same build
 
 ## Verification and acceptance
 
-- Focused automated parser/mapping tests: repeated words, nested emphasis, links, entities, escapes, non-ASCII text, surrogate pairs, CRLF/LF, tables, code blocks, task items, and source code-page conversion.
+- Focused automated parser/mapping tests: repeated words, nested emphasis, links, entities, escapes, non-ASCII text, surrogate pairs, CRLF/LF, tables, code blocks, task items, and files loaded from different disk encodings into the UTF-8 editor buffer.
 - Render fixtures for all requested Markdown features, local/HTTPS/missing images, valid/invalid Mermaid, and light/dark mode.
 - UI coverage: `.md`/`.MD` eligibility, non-Markdown and untitled buffers, customized/hidden toolbar, button/menu/shortcut toggles, preview keyboard focus, exact double-click source navigation, and block fallback.
 - Lifecycle coverage: unsaved edits, preserved undo/modified state, cancellation during load, repeated toggles, commands while hidden, Open/New/Save As/reload, external changes, and shutdown with callbacks pending.

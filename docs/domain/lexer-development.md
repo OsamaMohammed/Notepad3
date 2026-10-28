@@ -20,6 +20,7 @@ Homebrew lexer sources under `lexilla\lexers_x\` include AutoHotkey (`LexAHK` an
 - `src\StyleLexers\styleLexMarkdown.c` defines source highlighting in `lexMARKDOWN` and recognizes `md; markdown; mdown; mkdn; mkd; mdx; qmd`. Lexer recognition alone does not provide a rendered document view.
 - `src\Notepad3.c` creates the Scintilla source editor in `Globals.hwndEdit`; `MsgSize()` lays out `g_hwndEditWindow` within the editor frame. Inspect both handles when adding an alternate view.
 - Toolbar actions route through `s_ToolbarDispatch[]` and `_HandleToolbarCommands()`; `_UpdateToolbarDelayed()` updates button state. A preview command must also account for editor commands that continue to target `Globals.hwndEdit` while another view is visible.
+- `Encoding_SciCP` in `src\Encoding.h` is `CP_UTF8`. Map rendered text to byte offsets in the live UTF-8 buffer, not offsets in the encoded disk file. `InitScintillaHandle()` in `src\SciCall.h` sets `g_hwndEditWindow`; preserve its association with Scintilla when adding another child view.
 
 ## Fixtures and verification
 

@@ -21,7 +21,7 @@ This directory holds repository-specific guidance for contributors and coding ag
 | Domain: configuration | Portable INI lifecycle, persistence rules, and save/load behavior. | [Configuration and INI](domain/configuration-and-ini.md) |
 | Domain: localization | Locale resource invariants, encoding/line-ending requirements, and adding UI strings. | [Localization](domain/localization.md) |
 | Domain: lexer development | Lexer registration, property/comment/theme/localization touchpoints, and visual fixtures. | [Lexer development](domain/lexer-development.md) |
-| Feature designs | Proposed Markdown preview DLL, source navigation, lifecycle, and verification scope. | [Markdown preview design](superpowers/specs/2026-10-28-markdown-preview-design.md) |
+| Feature designs | Approved Markdown preview DLL design and implementation plan. | [Markdown preview design](superpowers/specs/2026-10-28-markdown-preview-design.md), [implementation plan](superpowers/plans/2026-10-28-markdown-preview.md) |
 | Domain: text features | Navigation among encoding, lexer, localization, and regular-expression references. | [Text features](domain/text-features.md) |
 | Domain: encoding | Detection precedence, UTF validation and heuristics, UCHARDET sampling, and UTF-32 load conversion. | [Encoding detection](domain/encoding-detection.md) |
 | Domain: regular expressions | PCRE2 integration, search/replacement syntax, regex translations, and URL hotspots. | [Regular expressions](domain/regular-expressions.md) |
