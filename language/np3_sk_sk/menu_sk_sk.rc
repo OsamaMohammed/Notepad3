@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Nápovedný &tip na odkaze",            IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "P&anely"
         BEGIN
             MENUITEM "Zobraziť tit&ulkový panel",           IDM_VIEW_TITLEBAR

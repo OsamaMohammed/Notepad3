@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Zeige einen &Hyperlink Tooltip",          IDM_VIEW_SHOW_HYPLNK_CALLTIP
             END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "&Leisten"
         BEGIN
             MENUITEM "Zeige &Titelleiste",                      IDM_VIEW_TITLEBAR

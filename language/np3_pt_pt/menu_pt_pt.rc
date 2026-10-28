@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Mostrar dica da &hiperligação",                  IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "P&ainéis"
         BEGIN
             MENUITEM "Mostrar Barra de Título",                                  IDM_VIEW_TITLEBAR

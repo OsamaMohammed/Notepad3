@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Hiển thị công cụ thông tin liên kết(&H)",         IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "Bảng điều khiển(&A)"
         BEGIN
             MENUITEM "Hiển thị thanh tiêu đề",                   IDM_VIEW_TITLEBAR

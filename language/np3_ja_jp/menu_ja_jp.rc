@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "ハイパーリンクのツールチップを表示(&H)",           IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "ウィンドウ構成(&A)"
         BEGIN
             MENUITEM "タイトルバーを表示",                         IDM_VIEW_TITLEBAR

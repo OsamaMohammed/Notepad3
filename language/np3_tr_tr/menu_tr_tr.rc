@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "&Bağlantı ipucu görüntülensin",                 IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "Araç çubukları"
         BEGIN
             MENUITEM "Araç çubuğunu görüntüle",                       IDM_VIEW_TITLEBAR

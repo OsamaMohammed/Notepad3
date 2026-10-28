@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Afficher les infobulles des hyperliens",      IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "P&anneaux"
         BEGIN
             MENUITEM "Afficher la barre de titre",          IDM_VIEW_TITLEBAR

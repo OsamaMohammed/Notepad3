@@ -403,4 +403,17 @@ END
 
 
 /////////////////////////////////////////////////////////////////////////////
+STRINGTABLE
+BEGIN
+    IDT_VIEW_MARKDOWN_PREVIEW        "Render Markdown"
+    IDS_MUI_MARKDOWN_PREVIEW_SOURCE  "Markdown Source"
+    IDS_MUI_MARKDOWN_PREVIEW_COPY    "Copy"
+    IDS_MUI_MARKDOWN_PREVIEW_OPENLINK "Open Link"
+    IDS_MUI_ERROR_MARKDOWN_PREVIEW_DLL      "The Markdown preview component (MarkdownPreview.dll) could not be loaded.\n\nOrdinary editing is not affected."
+    IDS_MUI_ERROR_MARKDOWN_PREVIEW_RUNTIME  "The Markdown preview needs the Microsoft Edge WebView2 Runtime, which is not installed.\n\nOpen the official download page?"
+    IDS_MUI_ERROR_MARKDOWN_PREVIEW_RENDER   "The Markdown preview could not render this document."
+    IDS_MUI_ERROR_MARKDOWN_PREVIEW_TIMEOUT  "The Markdown preview stopped responding and was closed."
+    IDS_MUI_ERROR_MARKDOWN_PREVIEW_SIZE     "This document is too large for the Markdown preview."
+END
+
 #endif    // not APSTUDIO_INVOKED

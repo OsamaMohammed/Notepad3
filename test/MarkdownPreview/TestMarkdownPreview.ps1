@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Core','WebView')][string]$Suite = 'Core',
+    [ValidateSet('Core','WebView','Host')][string]$Suite = 'Core',
     [string]$VisualStudioPath
 )
 
@@ -21,6 +21,21 @@ if (!(Test-Path -LiteralPath $vcvars)) {
 $output = Join-Path $root '.superpowers\sdd\2026-10-28-markdown-preview\core-tests'
 [void](New-Item -ItemType Directory -Path $output -Force)
 $source = Join-Path $root 'src\MarkdownPreview'
+if ($Suite -eq 'Host') {
+    $msbuild = Join-Path $VisualStudioPath 'MSBuild\Current\Bin\MSBuild.exe'
+    & $msbuild (Join-Path $source 'MarkdownPreview.vcxproj') -m -p:Configuration=Release -p:Platform=x64 -nologo -v:minimal
+    if ($LASTEXITCODE -ne 0) { throw 'Preview DLL build failed.' }
+    & $msbuild (Join-Path $root 'Notepad3.sln') -m -p:Configuration=Release -p:Platform=x64 -nologo -v:minimal
+    if ($LASTEXITCODE -ne 0) { throw 'Editor build failed.' }
+    $test = Join-Path $PSScriptRoot 'TestMarkdownHost.cpp'
+    $batch = Join-Path $output 'host-build.cmd'
+    [IO.File]::WriteAllLines($batch, @('@echo off', "call `"$vcvars`" >nul", 'if errorlevel 1 exit /b 1', "cd /d `"$output`"", "cl /nologo /EHsc /std:c++17 /utf-8 /W4 /DUNICODE /D_UNICODE `"$test`" /Fe:TestMarkdownHost.exe /link user32.lib", 'exit /b %errorlevel%'), [Text.UTF8Encoding]::new($false))
+    & $env:ComSpec /d /c "`"$batch`""
+    if ($LASTEXITCODE -ne 0) { throw 'Host test build failed.' }
+    & (Join-Path $output 'TestMarkdownHost.exe') (Join-Path $root 'Bin\Release_x64_v145\Notepad3.exe') (Join-Path $PSScriptRoot 'fixtures\host-sample.md')
+    if ($LASTEXITCODE -ne 0) { throw 'Host integration tests failed.' }
+    exit 0
+}
 if ($Suite -eq 'WebView') {
     $msbuild = Join-Path $VisualStudioPath 'MSBuild\Current\Bin\MSBuild.exe'
     & $msbuild (Join-Path $source 'MarkdownPreview.vcxproj') /m /p:Configuration=Release /p:Platform=x64 /nologo /v:minimal

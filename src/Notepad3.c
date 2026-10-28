@@ -47,6 +47,7 @@
 #include "Config/Config.h"
 #include "DarkMode/DarkMode.h"
 #include "Notepad3Util.h"
+#include "MarkdownPreview.h"
 #include "StyleLexers/EditLexer.h"
 
 #if (defined(_DEBUG) || defined(DEBUG)) && !defined(NDEBUG)
@@ -177,6 +178,16 @@ static bool      s_IsThisAnElevatedRelaunch = false;
 static WCHAR     s_wchWndClass[64] = { L'\0' };
 
 static HWND      s_hwndEditFrame = NULL;
+
+
+//=============================================================================
+//
+//  MarkdownPreview_GetSourceHwnd() - Source editor window for the preview host
+//
+HWND MarkdownPreview_GetSourceHwnd(void)
+{
+    return s_hwndEditFrame;
+}
 static bool      s_bPasteBoardListening = false;
 
 static int       s_WinCurrentWidth = 0;
@@ -289,7 +300,9 @@ static TBBUTTON  s_tbbMainWnd[] = {
     { 18, IDT_FILE_SAVECOPY, TBSTATE_ENABLED, BTNS_BUTTON, { 0 }, 0, 0 },
     { 19, IDT_EDIT_CLEAR, TBSTATE_ENABLED, BTNS_BUTTON, { 0 }, 0, 0 },
     { 20, IDT_FILE_PRINT, TBSTATE_ENABLED, BTNS_BUTTON, { 0 }, 0, 0 },
-    { 26, IDT_VIEW_CHASING_DOCTAIL, TBSTATE_ENABLED, BTNS_BUTTON, { 0 }, 0, 0 }
+    { 26, IDT_VIEW_CHASING_DOCTAIL, TBSTATE_ENABLED, BTNS_BUTTON, { 0 }, 0, 0 },
+    // contextual: added to the live toolbar only for Markdown documents
+    { I_IMAGENONE, IDT_VIEW_MARKDOWN_PREVIEW, TBSTATE_ENABLED, BTNS_BUTTON | BTNS_AUTOSIZE | BTNS_SHOWTEXT, { 0 }, 0, 0 }
 };
 // don't show buttons beyond this TBBUTTON[] index:
 #define TBBUTTON_LAST_DEFAULT (39)
@@ -2598,6 +2611,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
         if (IsColorSchemeChangeMessage(lParam)) {
             RefreshTitleBarThemeColor(hwnd);
             SendMessage(Globals.hwndEdit, WM_THEMECHANGED, 0, 0);
+            MarkdownPreview_UpdateTheme();
         }
         // Forward to Scintilla to refresh mouse scroll settings (issue #5223)
         SendMessage(Globals.hwndEdit, WM_SETTINGCHANGE, wParam, lParam);
@@ -2648,6 +2662,9 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
 
     case WM_COMMAND:
         return MsgCommand(hwnd, umsg, wParam, lParam);
+
+    case WM_MARKDOWNPREVIEW_EVENT:
+        return MarkdownPreview_HandleEvent(lParam);
 
     case WM_TRAYMESSAGE:
         return MsgTrayMessage(hwnd, wParam, lParam);
@@ -3634,6 +3651,8 @@ LRESULT MsgEndSession(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
 
     if (!bShutdownOK) {
 
+        MarkdownPreview_BeforeDocumentOperation();
+
         // Terminate file watching
         InstallFileWatching(false);
 
@@ -3733,6 +3752,8 @@ LRESULT MsgThemeChanged(HWND hwnd, WPARAM wParam,LPARAM lParam)
         // recreate toolbar and statusbar
         CreateBars(hwnd, Globals.hInstance);
 
+        MarkdownPreview_UpdateTheme();
+
         Style_ResetCurrentLexer(Globals.hwndEdit);
 
         Sci_RedrawScrollbars();
@@ -3827,6 +3848,8 @@ LRESULT MsgSize(HWND hwnd, WPARAM wParam, LPARAM lParam)
     EndDeferWindowPos(hdwp);
 
     s_WinCurrentWidth = cx;
+
+    MarkdownPreview_Resize();
 
     UpdateToolbar_Now(hwnd);
     UpdateMargins(true);
@@ -5311,6 +5334,8 @@ LRESULT MsgInitMenu(HWND hwnd, WPARAM wParam, LPARAM lParam)
     #endif
 
     UpdateSaveSettingsCmds();
+
+    MarkdownPreview_UpdateMenuState(hmenu);
 
     return FALSE;
 }
@@ -6960,6 +6985,11 @@ static bool _HandleViewAndSettingsCommands(HWND hwnd, UINT umsg, WPARAM wParam, 
 
     switch (iLoWParam) {
 
+    case IDM_VIEW_MARKDOWN_PREVIEW:
+        MarkdownPreview_Toggle(hwnd);
+        break;
+
+
     case IDM_VIEW_SCHEME:
         Style_SelectLexerDlg(Globals.hwndEdit);
         break;
@@ -8475,6 +8505,7 @@ static const struct { unsigned idt; unsigned idm; } s_ToolbarDispatch[] = {
     { IDT_VIEW_TOGGLE_VIEW,        IDM_VIEW_TOGGLE_VIEW },
     { IDT_VIEW_PIN_ON_TOP,         IDM_SET_ALWAYSONTOP },
     { IDT_FILE_LAUNCH,             IDM_FILE_LAUNCH },
+    { IDT_VIEW_MARKDOWN_PREVIEW,   IDM_VIEW_MARKDOWN_PREVIEW },
 };
 
 static bool _HandleToolbarCommands(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
@@ -8534,6 +8565,10 @@ LRESULT MsgCommand(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
         return FALSE;
     }
     #endif
+
+    if (MarkdownPreview_FilterCommand(iLoWParam)) {
+        return FALSE;
+    }
 
     bool const bIsThemesMenuCmd = ((iLoWParam >= IDM_THEMES_FACTORY_RESET) && (iLoWParam < (int)(IDM_THEMES_FACTORY_RESET + ThemeItems_CountOf())));
     if (bIsThemesMenuCmd) {
@@ -9817,6 +9852,9 @@ inline static LRESULT _MsgNotifyLean(const SCNotification* const scn, bool* bMod
                 }
             }
             *bModified = true;
+            if (MarkdownPreview_IsBusy()) {
+                MarkdownPreview_OnDocumentChanged();
+            }
         }
         if (*bModified) {
             LONG64 const timeout = Settings2.UndoTransactionTimeout;
@@ -11102,6 +11140,8 @@ static void  _UpdateToolbarDelayed()
         return;
     }
 
+    MarkdownPreview_UpdateToolbarButton();
+
     EnableTool(Globals.hwndToolbar, IDT_FILE_ADDTOFAV, Path_IsNotEmpty(Paths.CurrentFile));
     EnableTool(Globals.hwndToolbar, IDT_FILE_SAVE, IsSaveNeeded() || IsFileChangedFlagSet() /*&& !bReadOnly*/);
     EnableTool(Globals.hwndToolbar, IDT_FILE_RECENT, (MRU_Count(Globals.pFileMRU) > 0));
@@ -12158,6 +12198,8 @@ bool FileLoad(const HPATHL hfile_pth, const FileLoadFlags fLoadFlags, const DocP
     fioStatus.iEOLMode = Settings.DefaultEOLMode;
     fioStatus.iEncoding = Settings.DefaultEncoding;
 
+    MarkdownPreview_BeforeDocumentOperation();
+
     if (!(fLoadFlags & FLF_DontSave)) {
         if (!FileSave(FSF_Ask)) {
             return false;
@@ -12493,6 +12535,8 @@ bool FileRevert(const HPATHL hfile_pth, bool bIgnoreCmdLnEnc)
     DocPos const curColumnNum = Sci_GetCurrentColumnNumber();
 
     bool const bIsAtDocEnd = (curLineNum >= (Sci_GetLastDocLineNumber() - Settings2.CurrentLineVerticalSlop));
+
+    MarkdownPreview_BeforeDocumentOperation();
 
     Encoding_SrcWeak(CPI_NONE);
     if (bIgnoreCmdLnEnc) {

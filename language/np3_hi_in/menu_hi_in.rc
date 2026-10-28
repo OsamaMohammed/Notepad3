@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Hyperlink टूलटिप दिखाएं (&H)",         IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "पैनल (&A)"
         BEGIN
             MENUITEM "शीर्षक पट्टी दिखाएं",                      IDM_VIEW_TITLEBAR

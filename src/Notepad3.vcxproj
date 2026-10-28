@@ -1078,6 +1078,7 @@
       </ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Helpers.c" />
+    <ClCompile Include="MarkdownPreview.c" />
     <ClCompile Include="MuiLanguage.c" />
     <ClCompile Include="Notepad3.c" />
     <ClCompile Include="Notepad3Util.c" />
@@ -1185,6 +1186,7 @@
     <ClInclude Include="EditRTF.h" />
     <ClInclude Include="Encoding.h" />
     <ClInclude Include="Helpers.h" />
+    <ClInclude Include="MarkdownPreview.h" />
     <ClInclude Include="MuiLanguage.h" />
     <ClInclude Include="Notepad3.h" />
     <ClInclude Include="Notepad3Util.h" />

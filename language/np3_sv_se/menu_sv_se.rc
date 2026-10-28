@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Visa verktygstips för hyperlänk",             IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "Fält"
         BEGIN
             MENUITEM "Visa namnlist",                               IDM_VIEW_TITLEBAR

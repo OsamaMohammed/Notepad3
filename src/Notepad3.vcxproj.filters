@@ -66,6 +66,9 @@
     <ClCompile Include="Helpers.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MarkdownPreview.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Print.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -471,6 +474,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Helpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MarkdownPreview.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SciCall.h">

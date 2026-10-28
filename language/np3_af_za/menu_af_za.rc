@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "Wys &Hiperskakel Nutsmiddelwenk",     IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "P&anele"
         BEGIN
             MENUITEM "Wys Titelbalk",                       IDM_VIEW_TITLEBAR

@@ -58,6 +58,7 @@
 
 #include "Sci_Position.h"
 #include "Scintilla.h"
+#include "MarkdownPreview/PreviewApi.h"
 
 // - explicitly use MAX_PATH vs. PATHLONG_MAX_CCH
 #define MAX_PATH_EXPLICIT MAX_PATH
@@ -522,6 +523,26 @@ extern CONSTANTS_T const Constants;
 
 // ------------------------------------
 
+typedef struct MARKDOWNPREVIEW_STATE_T {
+
+    HMODULE         hModule;
+    NP3PreviewApi   Api;
+    NP3PreviewHandle hPreview;
+    unsigned long long uGeneration;
+    RECT            rcBounds;
+    DocPos          posAnchor;
+    DocPos          posCaret;
+    DocLn           iFirstVisibleLine;
+    bool            bActive;      // preview visible, source hidden
+    bool            bLoading;     // waiting for the DLL's Ready event
+    bool            bUnavailable; // DLL missing or rejected the ABI
+    bool            bButtonShown;
+    bool            bButtonLabelSource;
+
+} MARKDOWNPREVIEW_STATE_T, *PMARKDOWNPREVIEW_STATE_T;
+
+// ------------------------------------
+
 typedef struct GLOBALS_T {
 
     int       iCfgVersionRead;
@@ -600,6 +621,8 @@ typedef struct GLOBALS_T {
 #endif
 
     FR_STATES FindReplaceMatchFoundState;
+
+    MARKDOWNPREVIEW_STATE_T MarkdownPreview;
 
     WCHAR CurrentLngLocaleName[LOCALE_NAME_MAX_LENGTH + 1];
 

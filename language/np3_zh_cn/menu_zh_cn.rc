@@ -434,6 +434,8 @@ BEGIN
             MENUITEM "显示超链接提示(&H)",                    IDM_VIEW_SHOW_HYPLNK_CALLTIP
         END
         MENUITEM SEPARATOR
+        MENUITEM "Markdown &Preview\tCtrl+Alt+M",  IDM_VIEW_MARKDOWN_PREVIEW
+
         POPUP "面板(&A)"
         BEGIN
             MENUITEM "显示标题栏(&I)",                      IDM_VIEW_TITLEBAR
