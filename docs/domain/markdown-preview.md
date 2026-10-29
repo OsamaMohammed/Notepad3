@@ -5,7 +5,8 @@ Optional reading view for `.md` documents. The feature is an add-on: the editor 
 ## Behavior
 
 - Eligible buffer: current filename ends in `.md` (case-insensitive). Untitled buffers and other extensions stay ineligible during the initial release.
-- Toggle: View > Markdown Preview, `Ctrl+Alt+M`, or the contextual Render/Source toolbar button. Inside the preview, `Ctrl+Alt+M` is handled by the DLL's `AcceleratorKeyPressed` so it works while the browser has focus.
+- Toggle: View > Markdown Preview, `Ctrl+Alt+M`, or the contextual Render/Source toolbar button. Inside the preview, `Ctrl+Alt+M` is handled by the DLL's `AcceleratorKeyPressed` so it works while the browser has focus. An AltGr+M keystroke is document input, not the shortcut.
+- The toolbar button is inserted at runtime for eligible documents only. It is not offered in the Customize Toolbar list and is never written to the saved toolbar layout, so it survives customization, reset, and theme rebuilds without becoming a user setting.
 - The source editor stays visible until the DLL reports `Ready`; only then is `s_hwndEditFrame` hidden. Returning restores the caret, anchor, and first visible line captured when preview started.
 - Double-clicking rendered text returns to the mapped source byte offset; images, Mermaid output, and generated decorations fall back to their owning block.
 - Preview is read-only: task checkboxes keep their state, links do not navigate on single click, and Copy routes browser selection to the clipboard. Other commands leave preview first (`MarkdownPreview_FilterCommand`) so no command can edit a hidden buffer.
@@ -70,12 +71,14 @@ Suites (`-VisualStudioPath` is needed when `vswhere` is unavailable):
 powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite Core
 powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite WebView
 powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite Host
+powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite UI
 powershell -NoProfile -ExecutionPolicy Bypass -File Build\scripts\PackageMarkdownPreview.ps1 -Platform x64 -OutputDirectory out
 powershell -NoProfile -ExecutionPolicy Bypass -File test\MarkdownPreview\TestMarkdownPreview.ps1 -Suite Package -PackagePath out\MarkdownPreview-Release-x64.zip
 ```
 
 - `Host` launches a real editor and asserts the no-renderer-before-first-toggle rule, preview visibility, hidden source, preserved buffer, restored caret, and the contextual button.
-- `TestMarkdownHost.exe` reads editor state only through pointer-free messages; `SCI_GETTEXT` across processes corrupts the editor process.
+- `UI` drives the same build through AutoHotkey v2 from a private copy with a fresh portable `Notepad3.ini`, so it never reads or writes the user's settings. It covers the contextual button, toolbar customization and reset, a hidden toolbar, live theme switching with sampled preview pixels, resize propagation, `Ctrl+Alt+M` from both views, and AltGr input. It needs an interactive desktop (it is not part of CI) and skips checks the machine cannot produce, such as a `WM_DPICHANGED` when every monitor reports the same DPI.
+- `TestMarkdownHost.exe` reads editor state only through pointer-free messages; `SCI_GETTEXT` across processes corrupts the editor process. The UI suite likewise only sends messages whose parameters are integers, plus `BM_CLICK` on standard dialog buttons.
 
 ## Measured baseline (Release/x64, Windows 10, 10 samples, `WaitForInputIdle`)
 

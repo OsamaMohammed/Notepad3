@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Core','WebView','Host','Package')][string]$Suite = 'Core',
+    [ValidateSet('Core','WebView','Host','Package','UI')][string]$Suite = 'Core',
     [string]$VisualStudioPath,
     [string]$PackagePath,
     [ValidateSet('Win32','x64','ARM64')][string]$Platform = 'x64'
@@ -107,6 +107,30 @@ if ($Suite -eq 'WebView') {
     if ($LASTEXITCODE -ne 0) { throw 'WebView integration tests failed.' }
     & node (Join-Path $PSScriptRoot 'TestPreviewDom.mjs') (Join-Path $output 'TestPreviewWindow.exe') (Join-Path $root 'Bin\Release_x64_v145\MarkdownPreview.dll')
     if ($LASTEXITCODE -ne 0) { throw 'Browser DOM tests failed.' }
+    exit 0
+}
+if ($Suite -eq 'UI') {
+    $installDir = (Get-ItemProperty 'HKLM:\SOFTWARE\AutoHotkey' -ErrorAction SilentlyContinue).InstallDir
+    $ahk = @(
+        (Join-Path $installDir 'v2\AutoHotkey64.exe'),
+        (Join-Path $installDir 'v2\AutoHotkey.exe'),
+        (Join-Path ${env:ProgramFiles} 'AutoHotkey\v2\AutoHotkey64.exe')
+    ) | Where-Object { $installDir -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+    if (!$ahk) { throw 'The Markdown preview UI matrix requires AutoHotkey v2 (https://www.autohotkey.com).' }
+    $msbuild = Join-Path $VisualStudioPath 'MSBuild\Current\Bin\MSBuild.exe'
+    & $msbuild (Join-Path $source 'MarkdownPreview.vcxproj') -m -p:Configuration=Release -p:Platform=x64 -nologo -v:minimal
+    if ($LASTEXITCODE -ne 0) { throw 'Preview DLL build failed.' }
+    & $msbuild (Join-Path $root 'Notepad3.sln') -m -p:Configuration=Release -p:Platform=x64 -nologo -v:minimal
+    if ($LASTEXITCODE -ne 0) { throw 'Editor build failed.' }
+    $arguments = @(
+        (Join-Path $PSScriptRoot 'TestMarkdownPreview.ahk'),
+        (Join-Path $root 'Bin\Release_x64_v145\Notepad3.exe'),
+        (Join-Path $PSScriptRoot 'fixtures'),
+        (Join-Path $root '.superpowers\sdd\2026-10-28-markdown-preview\ui-matrix')
+    ) | ForEach-Object { '"' + $_ + '"' }
+    # Start-Process waits for GUI applications; the call operator does not.
+    $ui = Start-Process -FilePath $ahk -ArgumentList ($arguments -join ' ') -Wait -PassThru -NoNewWindow
+    if ($ui.ExitCode -ne 0) { throw "Markdown preview UI matrix failed (exit $($ui.ExitCode))." }
     exit 0
 }
 $test = Join-Path $PSScriptRoot 'TestMarkdownDocument.cpp'
