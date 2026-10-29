@@ -134,10 +134,20 @@ struct Preview : std::enable_shared_from_this<Preview> {
         if (window) { HWND old = window; window = nullptr; DestroyWindow(old); }
         resources.reset();
     }
+    // A child window starts at the bottom of its siblings' z-order, so the
+    // editor control stays above it: the preview would paint but receive no
+    // mouse input. Keep it on top whenever it is sized or shown.
+    void Raise()
+    {
+        if (window) { SetWindowPos(window, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE); }
+    }
     void Size(const RECT& rectangle)
     {
         bounds = rectangle;
-        if (window) { SetWindowPos(window, nullptr, bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top, SWP_NOZORDER | SWP_NOACTIVATE); }
+        if (window) {
+            SetWindowPos(window, nullptr, bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top, SWP_NOZORDER | SWP_NOACTIVATE);
+            Raise();
+        }
         if (controller) {
             RECT client{0, 0, bounds.right - bounds.left, bounds.bottom - bounds.top};
             Check(controller->put_Bounds(client));
@@ -175,7 +185,7 @@ struct Preview : std::enable_shared_from_this<Preview> {
         if (String(object.Get(), L"generation") != std::to_wstring(generation)) { return; }
         if (kind == L"ready") {
             KillTimer(window, 1);
-            if (!ready) { ready = true; ShowWindow(window, SW_SHOWNA); Report(NP3PreviewReady); }
+            if (!ready) { ready = true; Raise(); ShowWindow(window, SW_SHOWNA); Report(NP3PreviewReady); }
         } else if (kind == L"source" && ready) {
             uint64_t offset;
             ComPtr<ABI::Windows::Data::Json::IJsonValue> runValue;
