@@ -1,0 +1,159 @@
+name: Release
+
+# Builds the Windows installer and portable package for both architectures and
+# attaches them to a GitHub release.
+#
+# The version comes from Versions\release-version.txt, which is also what a tag
+# has to say: pushing v<version> keeps the repo and the published release in
+# step. Bump the file, commit it, then tag that commit.
+#
+# A manual run uses the file as-is and republishes the same tag, so it is safe
+# to re-run after a failure.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    name: Installer and portable packages
+    runs-on: windows-2025-vs2026
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v4
+
+      - name: Restore NuGet packages
+        run: |
+          nuget restore Notepad3.sln
+          nuget restore src\MarkdownPreview\packages.config -PackagesDirectory packages
+
+      # Same substitutions as build.yml, but the four version parts come from the
+      # release file instead of the date and the run number.
+      - name: Generate version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $version = (Get-Content 'Versions\release-version.txt' -Raw).Trim()
+          $parts = $version.Split('.')
+          if ($parts.Count -ne 4 -or ($parts | Where-Object { $_ -notmatch '^\d+$' })) {
+            throw "Versions\release-version.txt must hold Major.Minor.Revision.Build, found '$version'."
+          }
+
+          if ($env:GITHUB_REF -like 'refs/tags/*') {
+            $tag = $env:GITHUB_REF.Substring('refs/tags/'.Length)
+            if ($tag.StartsWith('v')) { $tag = $tag.Substring(1) }
+            if ($tag -ne $version) {
+              throw "Tag '$tag' does not match Versions\release-version.txt ('$version'). Bump the file, commit it, then tag that commit."
+            }
+          }
+
+          $commitId = (git rev-parse --short=8 HEAD)
+          $values = [ordered]@{
+            APPNAME     = 'Notepad3'
+            MAJOR       = $parts[0]
+            MINOR       = $parts[1]
+            MAINT       = $parts[2]
+            BUILD       = $parts[3]
+            SCIVER      = (Get-Content 'scintilla\version.txt' -Raw).Trim()
+            LXIVER      = (Get-Content 'lexilla\version.txt' -Raw).Trim()
+            PCRE2VER    = (Get-Content 'scintilla\pcre2\version.txt' -Raw).Trim()
+            UCHARDETVER = (Get-Content 'src\uchardet\version.txt' -Raw).Trim()
+            TINYEXPRVER = (Get-Content 'src\tinyexprcpp\version.txt' -Raw).Trim()
+            UTHASHVER   = (Get-Content 'src\uthash\version.txt' -Raw).Trim()
+            VERPATCH    = ''
+            COMMITID    = $commitId
+          }
+
+          Copy-Item -LiteralPath 'Versions\VersionEx.h.tpl' -Destination 'src\VersionEx.h' -Force
+          $header = Get-Content 'src\VersionEx.h' -Raw
+          foreach ($key in $values.Keys) {
+            $header = $header -replace ('\$' + $key + '\$'), "$($values[$key])"
+          }
+          Set-Content -Path 'src\VersionEx.h' -Value $header -NoNewline
+
+          Copy-Item -LiteralPath 'Versions\Notepad3.exe.manifest.tpl' -Destination 'res\Notepad3.exe.conf.manifest' -Force
+          $manifest = Get-Content 'res\Notepad3.exe.conf.manifest' -Raw
+          $manifest = $manifest -replace '\$APPNAME\$', 'Notepad3'
+          $manifest = $manifest -replace '\$VERPATCH\$', ''
+          $manifest = $manifest -replace '\$VERSION\$', $version
+          Set-Content -Path 'res\Notepad3.exe.conf.manifest' -Value $manifest -NoNewline
+
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Release version $version ($commitId)"
+
+      # The preview DLL lives outside Notepad3.sln, and the package needs it next
+      # to the editor for both architectures.
+      - name: Build preview add-on
+        shell: pwsh
+        run: |
+          foreach ($platform in @('x64', 'Win32')) {
+            msbuild src\MarkdownPreview\MarkdownPreview.vcxproj /m /p:Configuration=Release /p:Platform=$platform /nologo /v:minimal
+            if ($LASTEXITCODE -ne 0) { throw "Preview add-on build failed for $platform." }
+          }
+
+      - name: Build editor
+        shell: pwsh
+        run: |
+          foreach ($platform in @('x64', 'Win32')) {
+            msbuild Notepad3.sln /m /p:Configuration=Release /p:Platform=$platform /nologo /v:minimal
+            if ($LASTEXITCODE -ne 0) { throw "Editor build failed for $platform." }
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Package installer and portable ZIP
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File Build\scripts\PackageNotepad3.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Packaging failed.' }
+          Get-ChildItem out -File | Select-Object Name, Length
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Notepad3-${{ env.VERSION }}
+          path: out/*
+          retention-days: 30
+
+      - name: Attach to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$env:VERSION"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            git rev-parse --verify --quiet "refs/tags/$tag" *> $null
+            if ($LASTEXITCODE -eq 0) {
+              gh release create $tag --title "Notepad3 $env:VERSION" --generate-notes
+            } else {
+              gh release create $tag --title "Notepad3 $env:VERSION" --generate-notes --target $env:GITHUB_SHA
+            }
+            if ($LASTEXITCODE -ne 0) { throw "Could not create release $tag." }
+          }
+          $assets = Get-ChildItem out -File | ForEach-Object { $_.FullName }
+          gh release upload $tag $assets --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Could not upload assets to $tag." }
+
+          $published = gh release view $tag --json url,assets | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw "Could not read back release $tag." }
+          Write-Host $published.url
+          $published.assets | ForEach-Object { Write-Host "  $($_.name)" }

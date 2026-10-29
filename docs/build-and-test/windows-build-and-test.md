@@ -34,6 +34,14 @@ Tests include `test\TestFileVersion.cmd` and `test\TestAhkNotepad3.cmd` (AutoHot
 - Both tests share a `shell: cmd` step, which reports only the last command's exit code; append `|| exit /b 1` to every earlier test command.
 - Drive dialogs in the AHK test should be driven with `PostMessage(WM_COMMAND, ...)`, not `ControlClick`; synthesized clicks fail intermittently on the runner desktop.
 
+## Releases
+
+- `.github\workflows\release.yml` builds the x64 and Win32 editor plus the Markdown preview add-on, packages both with `Build\scripts\PackageNotepad3.ps1`, and attaches the two installers and two portable ZIPs to the GitHub release for the tag.
+- The release version lives in `Versions\release-version.txt` (`Major.Minor.Revision.Build`). Bump it, commit, then push a tag `v<same version>`; the workflow refuses a tag that disagrees with the file, so the repo and the published release cannot drift.
+- A manual run reuses the version from that file and republishes the same tag, which is how a failed release is retried without moving the tag.
+- Packaging needs 7-Zip and Inno Setup 6 (`ISCC.exe`); the script finds both in their usual locations or takes `-SevenZipPath` / `-IsccPath`.
+- The same script runs locally, so a release can be reproduced without CI: rebuild `Release` for `x64` and `Win32`, then run `powershell -File Build\scripts\PackageNotepad3.ps1` and look in `out`.
+
 ## Windows platform support
 
 Supported platforms: Win32 (x86), x64, x64_AVX2, and ARM64. ARM 32-bit is not supported; `Release|ARM` maps to Win32.

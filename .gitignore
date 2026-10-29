@@ -85,3 +85,7 @@ _upgrade_staging/
 
 # Isolated feature worktrees
 /.worktrees/
+
+# Packaging output #
+####################
+/out
