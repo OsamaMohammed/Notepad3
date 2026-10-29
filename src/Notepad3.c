@@ -1591,7 +1591,14 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 continue;
             }
         }
-        if (!TranslateAccelerator(hwnd, hAccMain, &msg)) {
+        // AltGr is delivered as Ctrl+Alt; an AltGr+M keystroke belongs to the
+        // document, not to the Ctrl+Alt+M preview shortcut. Ctrl+Alt+M uses the
+        // left Alt, so a held right Alt identifies genuine AltGr input.
+        bool const bAltGrM = ((msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN) &&
+                              (msg.wParam == (WPARAM)'M') &&
+                              (GetKeyState(VK_RMENU) & 0x8000) && (GetKeyState(VK_CONTROL) & 0x8000));
+
+        if (bAltGrM || !TranslateAccelerator(hwnd, hAccMain, &msg)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
@@ -10274,7 +10281,10 @@ LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam)
             break;
 
         case TBN_GETBUTTONINFO: {
-            if (((LPTBNOTIFY)lParam)->iItem < COUNTOF(s_tbbMainWnd)) {
+            // available-buttons list: the contextual preview button is never offered,
+            // it is inserted by UpdateToolbar() for eligible documents only.
+            if (((LPTBNOTIFY)lParam)->iItem < COUNTOF(s_tbbMainWnd) &&
+                s_tbbMainWnd[((LPTBNOTIFY)lParam)->iItem].idCommand != IDT_VIEW_MARKDOWN_PREVIEW) {
                 WCHAR tch[SMALL_BUFFER] = { L'\0' };
                 GetLngString(s_tbbMainWnd[((LPTBNOTIFY)lParam)->iItem].idCommand, tch, COUNTOF(tch));
                 StringCchCopyN(((LPTBNOTIFY)lParam)->pszText, ((LPTBNOTIFY)lParam)->cchText, tch, ((LPTBNOTIFY)lParam)->cchText);

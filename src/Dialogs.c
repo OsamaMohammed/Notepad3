@@ -6631,6 +6631,11 @@ int Toolbar_GetButtons(HANDLE hwnd, int cmdBase, LPWSTR lpszButtons, int cchButt
     for (int i = 0; i < cnt; i++) {
         TBBUTTON tbb = { 0 };
         SendMessage(hwnd, TB_GETBUTTON, (WPARAM)i, (LPARAM)&tbb);
+        // The Markdown preview button is contextual: shown only for eligible
+        // documents and re-inserted after every rebuild, never saved.
+        if (tbb.idCommand == IDT_VIEW_MARKDOWN_PREVIEW) {
+            continue;
+        }
         StringCchPrintf(tchItem, COUNTOF(tchItem), L"%i ",
                         (tbb.idCommand == 0) ? 0 : tbb.idCommand - cmdBase + 1);
         StringCchCat(tchButtons, COUNTOF(tchButtons), tchItem);

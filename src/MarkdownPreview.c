@@ -378,6 +378,11 @@ static bool _IsPreviewNeutralCommand(UINT uCmd)
     case IDM_VIEW_MARKDOWN_PREVIEW:
     case IDT_VIEW_MARKDOWN_PREVIEW:
     case IDM_VIEW_TOOLBAR:
+    case IDM_VIEW_CUSTOMIZETB:
+    case IDM_VIEW_TOGGLETB:
+    case IDM_VIEW_LOADTHEMETB:
+    case IDM_VIEW_DPISCALETB:
+    case IDM_VIEW_WIN_DARK_MODE:
     case IDM_VIEW_STATUSBAR:
     case IDM_VIEW_MENUBAR:
     case IDM_VIEW_TITLEBAR:
